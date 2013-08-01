@@ -1,0 +1,112 @@
+
+
+// create table through the code
+
+$sql_sales = "CREATE TABLE IF NOT EXISTS $kv_sales (
+  	id mediumint(10) NOT NULL AUTO_INCREMENT,
+		date datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
+		pro_id mediumint(9),		
+		txn_id varchar(30),
+		txn_type varchar(20),
+		gateway varchar(30),
+		buyer_email varchar(40),
+		status varchar(20),
+		payer_status varchar(20),		
+		pro_price float,
+		parent_cur varchar(5),
+		convert_cur varchar(5),
+		convert_fee float,
+		gross_amt float,
+		fee_amt float,
+		tax float,
+		net_amt float,
+		profit_amt float,		
+      	UNIQUE KEY id (id)
+    		)ENGINE=MyISAM  DEFAULT CHARSET=latin1 COLLATE=latin1_general_ci;";
+dbDelta($sql_sales);
+
+
+
+
+// generate 30 days report by the followin function
+
+
+function kv_admin_thirty_day_chart () {
+  global $wpdb;
+	$sale_table_name = $wpdb->prefix.'sales_report' ;
+	$period= 30 ; 
+	$cur_stat= 'USD' ; 
+	if ( 'POST' == $_SERVER['REQUEST_METHOD']  && !empty( $_POST['chart_sat'])) {
+		if(isset($_POST['period_of_status']))
+			$period = $_POST['period_of_status'];
+		if(isset($_POST['cur_stat']))
+			$cur_stat = $_POST['cur_stat'];
+	
+	}
+	for ( $i = $period; $i>=0; $i-- ) {
+				$gross_amt_day = 0;
+				$net_amt_day  = 0;
+				$profit_amt =0 ; 
+				$r_date = 0 ;
+				$selected_results = $wpdb->get_results("SELECT gross_amt, net_amt, profit_amt , DATE_FORMAT(`date`,'%e %b')AS date FROM $sale_table_name WHERE DATE(date) = DATE_SUB( CURDATE( ) ,INTERVAL '$i' DAY ) AND parent_cur = '$cur_stat'");
+				//echo count($selected_results) . '-';
+				foreach($selected_results as $result) {
+					$r_date = $result->date ; 	
+					$gross_amt_day += $result->gross_amt;
+					$net_amt_day += $result->net_amt ; 
+					$profit_amt += $result->profit_amt ; 
+				}			
+				$res_date[] = $r_date ; 
+				$gross_amt_ar[] = $gross_amt_day ; 
+				$net_amt_ar[] = $net_amt_day ;
+				$profit_amt_ar[] = $profit_amt;
+			} ?>
+<h3 class='hndle'>  Status
+<div style="float : right; "> <form method="post" action="" > <label> <input type="radio" name="period_of_status" value="30" > Monthly </label>
+	<label> <input type="radio" name="period_of_status" value="7"> Weekly</label>
+<label> <input type="radio" name="period_of_status" value="90" > 3 Month </label>
+ 	 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+	<label> <input type="radio" name="cur_stat" value="INR" > INR (<span class="Rupee">&#x20B9;</span> )</label>
+	<label> <input type="radio" name="cur_stat" value="USD" > USD ($)</label>  &euro;  &pound; 
+	<input type="hidden" name="chart_sat" value="selected" >
+	<input type="submit" name="status_submit" name="submit" class="button-primary" value="Go"  >
+	</form> </div> </h3> <div class="clear"></div>
+<hr>
+<canvas id="canvas" height="250" width="780"></canvas>
+	<script>
+		
+		var lineChartData = {
+			labels : <?php echo json_encode($res_date) ; ?>,
+			datasets : [	
+				
+			{
+					fillColor : "rgba(51,17,5,0.5)",
+					strokeColor : "#2D3424",
+					pointColor : "green",
+					pointStrokeColor : "#2D245",
+					data : <?php echo json_encode($net_amt_ar) ; ?>					
+				},		
+				{
+					fillColor : "rgba(51,17,5,0.5)",
+					strokeColor : "#2D3424",
+					pointColor : "green",
+					pointStrokeColor : "#2D245",
+					data : <?php echo json_encode($gross_amt_ar) ; ?>					
+				},
+				{
+					fillColor : "rgba(151,187,205,0.5)",
+					strokeColor : "#2D5454",
+					pointColor : "blue",
+					pointStrokeColor : "#2D54E5",
+					data : <?php echo json_encode($profit_amt_ar) ; ?>					
+				}
+
+			]
+
+		}
+
+	var myLine = new Chart(document.getElementById("canvas").getContext("2d")).Line(lineChartData);
+	
+	</script>
+<div class="clear"></div>
+<?php }
